@@ -1,0 +1,103 @@
+{
+    "variables": {
+        "hostname": "master0",
+        "peer_hostnames": "master0"
+    },
+    "builders": [
+        {
+            "type": "arm-image",
+            "iso_url": "http://cdimage.ubuntu.com/releases/bionic/release/ubuntu-18.04.2-preinstalled-server-arm64+raspi3.img.xz",
+            "iso_checksum_type": "sha256",
+            "iso_checksum": "710129f570a3655daca6f05503bb5350a67a59f44fab32e11d35f999cc4b7881",
+            "image_mounts": [
+                "/boot",
+                "/"
+            ],
+            "qemu_binary": "qemu-aarch64-static",
+            "last_partition_extra_size": "1073741824",
+            "chroot_mounts": [
+                [
+                    "proc",
+                    "proc",
+                    "/proc"
+                ],
+                [
+                    "sysfs",
+                    "sysfs",
+                    "/sys"
+                ],
+                [
+                    "bind",
+                    "/dev",
+                    "/dev"
+                ],
+                [
+                    "devpts",
+                    "devpts",
+                    "/dev/pts"
+                ],
+                [
+                    "binfmt_misc",
+                    "binfmt_misc",
+                    "/proc/sys/fs/binfmt_misc"
+                ],
+                [
+                    "bind",
+                    "/run",
+                    "/run"
+                ]
+            ]
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell-local",
+            "script": "packer/generate.sh",
+            "environment_vars": [
+                "HOSTNAME={{ user `hostname` }}"
+            ]
+        },
+        {
+            "type": "shell-local",
+            "script": "packer/download.sh"
+        },
+        {
+            "type": "file",
+            "source": "packer/generated",
+            "destination": "/tmp/generated"
+        },
+        {
+            "type": "file",
+            "source": "packer/downloads",
+            "destination": "/tmp/downloads"
+        },
+        {
+            "type": "shell",
+            "scripts": [
+                "packer/provision/update.sh",
+                "packer/provision/set-hostname.sh",
+                "packer/provision/add-users.sh",
+                "packer/provision/install-etcd.sh",
+                "packer/provision/install-kubernetes.sh",
+                "packer/provision/install-kubelet.sh"
+            ],
+            "environment_vars": [
+                "HOSTNAME={{ user `hostname` }}",
+                "PEER_HOSTNAMES={{ user `peer_hostnames` }}"
+            ]
+        },
+        {
+            "type": "shell",
+            "inline": "rm -r /tmp/generated"
+        }
+    ],
+    "post-processors": [
+        {
+            "type": "shell-local",
+            "inline": [
+                "mv output-arm-image/image output/{{ user `hostname` }}.img",
+                "shasum -a 256 output/{{ user `hostname` }}.img > output/{{ user `hostname` }}.img.sha256"
+            ]
+        }
+    ]
+}

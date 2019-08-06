@@ -1,0 +1,4 @@
+{
+    "hostname": "master1",
+    "peer_hostnames": "master0,master1,master2"
+}
